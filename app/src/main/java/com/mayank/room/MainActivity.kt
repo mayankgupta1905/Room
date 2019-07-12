@@ -2,6 +2,8 @@ package com.mayank.room
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import androidx.lifecycle.MediatorLiveData
+import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.room.Room
 import kotlinx.android.synthetic.main.activity_main.*
@@ -9,6 +11,9 @@ import kotlinx.android.synthetic.main.activity_main.*
 class MainActivity : AppCompatActivity() {
 
     var task_list = arrayListOf<Task>()
+
+    var formData: MediatorLiveData<Boolean> = MediatorLiveData()
+
     val db by lazy {
         Room.databaseBuilder(
             this,
@@ -23,20 +28,39 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
-        task_list = db.todoDao().getAllTask().filter { todo ->
-            todo.task.contains("abc",true)
-        } as ArrayList<Task>
-
         val adapter = TaskAdapter(task_list, this)
         rvTask.layoutManager = LinearLayoutManager(this)
         rvTask.adapter = adapter
 
+        //returns value in synchronous manner
+//        db.todoDao().getAllTask().value
+  //Returns value in Async Manner
+
+        formData.addSource(db.todoDao().getAllTask()) {
+            if(it.isNotEmpty())
+            {
+                formData.value = false
+            }else
+            {
+                formData.value = true
+                formData.removeSource(db.todoDao().getAllTask())
+            }
+        }
+
+
+        db.todoDao().getAllTask().observe(this, Observer {
+            task_list = it as ArrayList<Task>
+            adapter.updateTasks(task_list)
+        })
+
+//        task_list = db.todoDao().getAllTask().filter { todo ->
+//            todo.task.contains("abc",true)
+//        } as ArrayList<Task>
+
+
         adapter.todoItemClickListener = object: TodoItemClickListener {
             override fun onDeleteClick(task: Task, position: Int) {
                 db.todoDao().deleteTask(task)
-                task_list = db.todoDao().getAllTask() as ArrayList<Task>
-                adapter.updateTasks(task_list)
             }
 
             override fun onDoneClick(task: Task, position: Int) {
@@ -47,9 +71,6 @@ class MainActivity : AppCompatActivity() {
 
         add.setOnClickListener {
             db.todoDao().insertRow(Task(task = Task_input.text.toString(), status = false))
-            task_list = db.todoDao().getAllTask() as ArrayList<Task>
-            adapter.updateTasks(task_list)
-            adapter.notifyDataSetChanged()
             Task_input.text.clear()
         }
     }

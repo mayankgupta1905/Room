@@ -1,9 +1,7 @@
 package com.mayank.room
 
-import androidx.room.Dao
-import androidx.room.Delete
-import androidx.room.Insert
-import androidx.room.Query
+import androidx.lifecycle.LiveData
+import androidx.room.*
 
 @Dao
 interface TodoDao {
@@ -11,11 +9,14 @@ interface TodoDao {
     @Insert
     fun insertRow(task:Task)
 
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE) // when there is a conflict in the primary keys then we use this to avoid crash
     fun insertMultiple(tasklist:ArrayList<Task>)
 
+//    @Query("Select * FROM Task")
+//    fun getAllTask() : List<Task>
+
     @Query("Select * FROM Task")
-    fun getAllTask() : List<Task>
+    fun getAllTask() : LiveData<List<Task>> // using live data
 
     @Query("Select * FROM Task Where status = :done")
     fun getAllDoneTask(done:Boolean) : List<Task>
